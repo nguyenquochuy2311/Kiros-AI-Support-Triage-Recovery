@@ -15,7 +15,7 @@ interface Ticket {
   draftReply?: string;
   finalReply?: string;
   createdAt: string;
-  createdAt: string;
+
   updatedAt?: string;
 }
 
@@ -46,13 +46,19 @@ export default function Dashboard() {
   });
 
   const [newTicketContent, setNewTicketContent] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const fetchTickets = async () => {
     try {
       const res = await fetch(`${API_URL}/api/tickets`);
       const data = await res.json();
-      setTickets(data);
+      if (Array.isArray(data)) {
+        setTickets(data);
+      } else {
+        console.error('API returned non-array data:', data);
+        setTickets([]);
+      }
     } catch (err) {
       console.error('Failed to fetch tickets', err);
     }
@@ -66,6 +72,7 @@ export default function Dashboard() {
 
   const createTicket = async () => {
     if (!newTicketContent) return;
+    setCreateError(null);
     try {
       const res = await fetch(`${API_URL}/api/tickets`, {
         method: 'POST',
@@ -75,7 +82,18 @@ export default function Dashboard() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        alert(`Failed to create ticket: ${JSON.stringify(errorData.error)}`);
+        let errorMessage = 'Failed to create ticket';
+
+        if (errorData.error) {
+          if (Array.isArray(errorData.error)) {
+            // Handle Zod errors
+            errorMessage = errorData.error.map((e: any) => e.message).join(', ');
+          } else {
+            errorMessage = errorData.error;
+          }
+        }
+
+        setCreateError(errorMessage);
         return;
       }
 
@@ -88,10 +106,9 @@ export default function Dashboard() {
       });
       setNewTicketContent('');
       setIsDialogOpen(false);
-      // No need to fetchTickets() as we updated local state
     } catch (err) {
       console.error('Failed to create ticket', err);
-      alert('Network error failed to create ticket');
+      setCreateError('Network error: Could not reach the server.');
     }
   };
 
@@ -128,6 +145,11 @@ export default function Dashboard() {
               placeholder="Describe your issue..."
               className="w-full border border-gray-300 rounded p-2 mb-4 min-h-[100px] focus:ring-2 focus:ring-blue-500 focus:outline-none"
             />
+            {createError && (
+              <div className="bg-red-50 text-red-600 p-3 rounded mb-4 text-sm border border-red-200">
+                {createError}
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setIsDialogOpen(false)}

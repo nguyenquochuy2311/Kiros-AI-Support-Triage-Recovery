@@ -1,6 +1,58 @@
 version: '3.8'
 
 services:
+  # ------------------------------------
+  # 1. API Server
+  # ------------------------------------
+  server:
+    build: ./server
+    command: npm run start:server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_DB}${POSTGRES_PARAMS}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+      - postgres
+    restart: always
+
+  # ------------------------------------
+  # 2. Background Worker
+  # ------------------------------------
+  worker:
+    build: ./server
+    command: npm run start:worker
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}/${POSTGRES_DB}${POSTGRES_PARAMS}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+      - server
+      - postgres
+    restart: always
+
+  # ------------------------------------
+  # 3. Client
+  # ------------------------------------
+  client:
+    build: ./client
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL} # Browser access
+    depends_on:
+      - server
+    restart: always
+
+  # ------------------------------------
+  # 4. Redis
+  # ------------------------------------
   redis:
     image: redis:7-alpine
     ports:
@@ -8,5 +60,22 @@ services:
     volumes:
       - redis_data:/data
 
+  # ------------------------------------
+  # 5. Postgres
+  # ------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
 volumes:
   redis_data:
+  postgres_data:

@@ -1,10 +1,11 @@
 
-import 'dotenv/config'; // Load environment variables first
+import './config/env'; // Load environment variables first with validation and expansion
 import express from 'express';
 import cors from 'cors';
 import ticketRoutes from './routes/tickets';
 import { BullMQAdapter } from './adapters';
-import './workers/ticketWorker'; // Start the worker
+// Worker is now run in a separate process (see worker.ts)
+
 
 const app = express();
 const PORT = process.env.PORT || 3001;
