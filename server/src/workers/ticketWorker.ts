@@ -14,14 +14,17 @@ const openai = new OpenAI({
   apiKey: env.OPENAI_API_KEY,
 });
 
-const llmResponseSchema = z.object({
-  category: z.enum(["Billing", "Technical", "Feature", "Other"]),
-  urgency: z.enum(["High", "Medium", "Low"]),
-  sentiment: z.number().int().min(1).max(10),
-  draftReply: z.string(),
+const AnalysisSchema = z.object({
+  category: z.preprocess((val) => {
+    if (Array.isArray(val)) return val.length > 0 ? val[0] : null;
+    return val;
+  }, z.enum(["Billing", "Technical", "Feature", "Other"]).nullable().optional()),
+  urgency: z.preprocess((val) => {
+    if (Array.isArray(val)) return val.length > 0 ? val[0] : null;
+    return val;
+  }, z.enum(["High", "Medium", "Low"]).nullable().optional()),
+  sentiment: z.preprocess((val) => parseInt(String(val), 10), z.number().int().min(1).max(10)).optional(),
 });
-
-type LLMResponse = z.infer<typeof llmResponseSchema>;
 
 const processTicket = async (job: any) => {
   const { ticketId, content } = job.data;
@@ -42,21 +45,16 @@ const processTicket = async (job: any) => {
       response_format: { type: "json_object" },
     });
     const analysisRaw = analysisCompletion.choices[0].message.content || "{}";
-    const analysisFields = JSON.parse(analysisRaw);
-
-    // Sanitize category (ensure it's a string, not an array)
-    let category = analysisFields.category;
-    if (Array.isArray(category)) {
-      category = category[0];
-    }
+    const analysisJson = JSON.parse(analysisRaw);
+    const analysisFields = AnalysisSchema.parse(analysisJson);
 
     // Update DB with Classification
     await prisma.ticket.update({
       where: { id: ticketId },
       data: {
-        category: category,
+        category: analysisFields.category,
         urgency: analysisFields.urgency,
-        sentiment: typeof analysisFields.sentiment === 'string' ? parseInt(analysisFields.sentiment, 10) : analysisFields.sentiment,
+        sentiment: analysisFields.sentiment,
       }
     });
 
@@ -117,11 +115,22 @@ const processTicket = async (job: any) => {
 
     console.log(`Ticket ${ticketId} processed successfully.`);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to process ticket ${ticketId}:`, error);
+
+    const errorData = {
+      message: error.message || 'Unknown error',
+      stack: error.stack,
+      name: error.name,
+      details: error instanceof z.ZodError ? error.errors : undefined,
+    };
+
     await prisma.ticket.update({
       where: { id: ticketId },
-      data: { status: 'FAILED' }
+      data: {
+        status: 'FAILED',
+        error: errorData as any
+      }
     });
   }
 };
