@@ -1,3 +1,3 @@
-export { env } from "./env.js";
-export { prisma } from "./prisma.js";
-export { redis, redisSubscriber, redisPublisher } from "./redis.js";
+export { env } from "./env";
+export { prisma } from "./prisma";
+export { redis, redisSubscriber, redisPublisher } from "./redis";

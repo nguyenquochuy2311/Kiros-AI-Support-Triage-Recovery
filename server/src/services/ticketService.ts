@@ -1,10 +1,8 @@
 
-import { PrismaClient, Ticket } from '@prisma/client';
+import { Ticket } from '@prisma/client';
+import { prisma, env, redisPublisher } from '../config';
 import { IQueueAdapter, BullMQAdapter } from '../adapters';
-import Redis from 'ioredis';
-import { env } from '../config/env';
 
-const prisma = new PrismaClient();
 const queue: IQueueAdapter = new BullMQAdapter('ticket-processing', `redis://${env.REDIS_HOST}:${env.REDIS_PORT}`);
 
 export class TicketService {
@@ -21,13 +19,14 @@ export class TicketService {
       },
     });
 
-    // 2. Add to Queue
-    await queue.addJob('process-ticket', { ticketId: ticket.id, content });
+    // 2. Add to Queue with Retries
+    await queue.addJob('process-ticket', { ticketId: ticket.id, content }, {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 2000 }
+    });
 
     // 3. Publish Event
-    const redis = new Redis(`redis://${env.REDIS_HOST}:${env.REDIS_PORT}`);
-    await redis.publish('ticket-updates', JSON.stringify({ type: 'TICKET_CREATED', ticket: ticket }));
-    await redis.quit();
+    await redisPublisher.publish('ticket-updates', JSON.stringify({ type: 'TICKET_CREATED', ticket: ticket }));
 
     return ticket;
   }

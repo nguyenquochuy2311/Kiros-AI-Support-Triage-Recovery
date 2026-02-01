@@ -23,8 +23,14 @@ export class BullMQAdapter implements IQueueAdapter {
     console.log('BullMQ Adapter connected');
   }
 
-  async addJob(name: string, data: unknown): Promise<void> {
-    await this.queue.add(name, data);
+  async addJob(name: string, data: unknown, options?: { attempts?: number; backoff?: { type: string; delay: number } }): Promise<void> {
+    await this.queue.add(name, data, {
+      attempts: options?.attempts || 3,
+      backoff: options?.backoff || {
+        type: 'exponential',
+        delay: 1000,
+      },
+    });
   }
 
   process(name: string, handler: (job: any) => Promise<void>): void {

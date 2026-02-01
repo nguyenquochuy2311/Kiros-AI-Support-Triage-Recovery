@@ -26,4 +26,7 @@ model Ticket {
   error      Json?
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
 }
