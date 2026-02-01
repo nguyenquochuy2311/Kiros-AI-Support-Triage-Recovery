@@ -1,24 +1,38 @@
-import express from "express";
-import cors from "cors";
-import { env } from "./config/index.js";
+
+import 'dotenv/config'; // Load environment variables first
+import express from 'express';
+import cors from 'cors';
+import ticketRoutes from './routes/tickets';
+import { BullMQAdapter } from './adapters';
+import './workers/ticketWorker'; // Start the worker
 
 const app = express();
+const PORT = process.env.PORT || 3001;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health check
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+// Routes
+app.use('/api/tickets', ticketRoutes);
+
+import { sseManager } from './sse';
+app.get('/api/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  sseManager.addClient(res);
 });
 
-// TODO: Mount routes
-// app.use("/api/tickets", ticketRoutes);
-// app.use("/api/events", sseRoutes);
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 
-app.listen(env.PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${env.PORT}`);
-  console.log(`📊 Environment: ${env.NODE_ENV}`);
-  console.log(`🤖 LLM Mock Mode: ${env.LLM_MOCK}`);
+// Initialize Queue Adapter for Worker (in a real app, worker might be a separate process)
+// For this MVP, we'll run it in the same process or separate, but we need to ensure Redis connection.
+// The Worker instantiation will happen in the worker file.
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
