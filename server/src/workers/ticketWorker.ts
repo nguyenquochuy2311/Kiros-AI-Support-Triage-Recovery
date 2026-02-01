@@ -15,7 +15,7 @@ const openai = new OpenAI({
 });
 
 const llmResponseSchema = z.object({
-  category: z.enum(["Billing", "Technical", "Featue", "Other"]), // Intentionally misspelled Feature to match potential AI output, or use strict
+  category: z.enum(["Billing", "Technical", "Feature", "Other"]),
   urgency: z.enum(["High", "Medium", "Low"]),
   sentiment: z.number().int().min(1).max(10),
   draftReply: z.string(),
@@ -36,7 +36,7 @@ const processTicket = async (job: any) => {
     const analysisCompletion = await openai.chat.completions.create({
       messages: [
         { role: "system", content: "You are a helpful support agent. Analyze the ticket and return JSON." },
-        { role: "user", content: `Analyze this: ${content}. Return JSON matching: { category: 'Billing'|'Technical'|'Feature'|'Other', urgency: 'High'|'Medium'|'Low', sentiment: 1-10 }` }
+        { role: "user", content: `Analyze this: ${content}. Return JSON matching: { category: 'Billing'|'Technical'|'Feature'|'Other' (choose one), urgency: 'High'|'Medium'|'Low', sentiment: 1-10 }` }
       ],
       model: "gpt-3.5-turbo",
       response_format: { type: "json_object" },
@@ -44,11 +44,17 @@ const processTicket = async (job: any) => {
     const analysisRaw = analysisCompletion.choices[0].message.content || "{}";
     const analysisFields = JSON.parse(analysisRaw);
 
+    // Sanitize category (ensure it's a string, not an array)
+    let category = analysisFields.category;
+    if (Array.isArray(category)) {
+      category = category[0];
+    }
+
     // Update DB with Classification
     await prisma.ticket.update({
       where: { id: ticketId },
       data: {
-        category: analysisFields.category,
+        category: category,
         urgency: analysisFields.urgency,
         sentiment: typeof analysisFields.sentiment === 'string' ? parseInt(analysisFields.sentiment, 10) : analysisFields.sentiment,
       }
