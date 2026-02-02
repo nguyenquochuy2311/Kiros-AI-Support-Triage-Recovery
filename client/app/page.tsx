@@ -3,7 +3,8 @@ import Dashboard from "./dashboard";
 export default function Page() {
   // Safe environment variable retrieval
   const getApiUrl = () => {
-    let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    // Prioritize API_URL (runtime) over NEXT_PUBLIC_API_URL (build-time/inlined)
+    let url = process.env.API_URL || process.env['NEXT_PUBLIC_API_URL'] || 'http://localhost:3001';
     if (url && !url.startsWith('http')) {
       url = `https://${url}`;
     }
