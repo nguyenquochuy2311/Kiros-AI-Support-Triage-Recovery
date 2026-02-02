@@ -4,10 +4,10 @@ services:
   # ------------------------------------
   - type: web
     name: ai-triage-server
-    env: node
+    env: docker
     plan: free
-    buildCommand: cd server && npm install && npm run build
-    startCommand: cd server && npm start
+    dockerContext: server
+    dockerfilePath: ./server/Dockerfile
     envVars:
       - key: PORT
         value: 10000
@@ -34,10 +34,11 @@ services:
   # ------------------------------------
   - type: worker
     name: ai-triage-worker
-    env: node
+    env: docker
     plan: free
-    buildCommand: cd server && npm install && npm run build
-    startCommand: cd server && npm run start:worker
+    dockerContext: server
+    dockerfilePath: ./server/Dockerfile
+    dockerCommand: npm run start:worker
     envVars:
       - key: NODE_ENV
         value: production
@@ -62,10 +63,10 @@ services:
   # ------------------------------------
   - type: web
     name: ai-triage-client
-    env: node
+    env: docker
     plan: free
-    buildCommand: cd client && npm install && npm run build
-    startCommand: cd client && npm start
+    dockerContext: client
+    dockerfilePath: ./client/Dockerfile
     envVars:
       - key: NEXT_PUBLIC_API_URL
         fromService:

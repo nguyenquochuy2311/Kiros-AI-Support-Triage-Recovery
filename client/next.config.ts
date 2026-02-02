@@ -6,6 +6,7 @@ const projectDir = process.cwd();
 loadEnvConfig(path.join(projectDir, '../'));
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   /* config options here */
 };
 
