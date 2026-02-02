@@ -25,77 +25,79 @@ An intelligent support triage system that uses AI to analyze tickets, categorize
 ### Prerequisites
 
 1.  **Node.js** (v18+)
-2.  **Docker** (for Redis)
+2.  **Docker** & Docker Compose (for Redis & Postgres)
 3.  **OpenAI API Key**
 
-### 1. Start Infrastructure (Redis)
+### 1. Environment Setup
 
-Use Docker Compose to start the Redis instance needed for the job queue.
+This project uses a root `.env` file for Docker Compose and specific configurations for local development.
+
+1.  **Root (Docker)**: Copy `.env.example` to `.env` in the root directory.
+    ```bash
+    cp .env.example .env
+    ```
+    *Fill in your `OPENAI_API_KEY` in the `.env` file.*
+
+2.  **Client**: Copy `client/.env.example` to `client/.env.local`.
+    ```bash
+    cp client/.env.example client/.env.local
+    ```
+
+### 2. Start Infrastructure (Redis & Postgres)
+
+Start the database and queue instances using Docker Compose.
 
 ```bash
-docker-compose up -d redis
+docker-compose up -d redis postgres
 ```
-
-### 2. Run Full Stack with Docker Compose (Optional)
-
-If you prefer to run the entire stack (API, Worker, Client, Redis) in containers:
-
-```bash
-# Ensure you have a .env file in ./server
-docker-compose up --build
-```
-
-The app will be available at:
-- Client: `http://localhost:3000`
-- API: `http://localhost:3001`
 
 ### 3. Backend Setup (`/server`)
 
-Create a `.env` file in `server/` based on `.env.example`:
+The server and worker run together in development mode.
 
-```env
-DATABASE_URL="postgresql://..." # Your Postgres URL (e.g., local or Neon)
-REDIS_HOST="localhost"
-REDIS_PORT=6379
-OPENAI_API_KEY="sk-..."
-PORT=3001
-```
+1.  **Install Dependencies**:
+    ```bash
+    cd server
+    npm install
+    ```
 
-Install and Run:
+2.  **Database Migration**:
+    ```bash
+    npx prisma migrate dev
+    ```
 
-```bash
-cd server
-npm install
-npx prisma migrate dev  # Set up database
-npm run dev             # Starts API Server
-```
+3.  **Start Server & Worker**:
+    ```bash
+    npm run dev
+    ```
+    *This command starts both the API Server (port 3001) and the Background Worker.*
 
-**Start the Background Worker:**
+### 4. Frontend Setup (`/client`)
 
-IN A SEPARATE TERMINAL, start the worker process to handle ticket analysis.
+1.  **Install Dependencies**:
+    ```bash
+    cd client
+    npm install
+    ```
 
-```bash
-cd server
-npm run dev:worker
-```
-
-### 3. Frontend Setup (`/client`)
-
-Create a `.env.local` file in `client/`:
-
-```env
-NEXT_PUBLIC_API_URL="http://localhost:3001"
-```
-
-Install and Run:
-
-```bash
-cd client
-npm install
-npm run dev
-```
+2.  **Start Client**:
+    ```bash
+    npm run dev
+    ```
 
 Visit `http://localhost:3000` to access the application.
+
+## 🐳 Full Stack Docker (Optional)
+
+Run the entire stack (API, Worker, Client, Redis, Postgres) in containers:
+
+```bash
+# Ensure root .env is configured
+docker-compose up --build
+```
+
+- Client: `http://localhost:3000`
+- API: `http://localhost:3001`
 
 ## ☁️ Deployment (Render.com)
 
@@ -109,7 +111,8 @@ This project is configured for easy deployment on [Render](https://render.com) u
     - **Worker Service**
     - **Client Service**
     - **Redis**
-5.  **Important**: You must manually provide the `DATABASE_URL` and `OPENAI_API_KEY` in the Render dashboard environment variables for the API and Worker services.
+    - **Postgres**
+5.  **Important**: You must manually provide the `OPENAI_API_KEY` in the Render dashboard environment variables for the API and Worker services. The `DATABASE_URL` is automatically injected by Render's managed database service.
 
 ## 🧪 Verification
 

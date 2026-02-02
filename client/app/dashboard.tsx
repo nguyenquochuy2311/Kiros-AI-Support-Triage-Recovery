@@ -73,10 +73,12 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
   }, []);
 
   const [createdTicketId, setCreatedTicketId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const createTicket = async () => {
     if (!newTicketContent) return;
     setCreateError(null);
+    setIsCreating(true);
     try {
       const res = await fetch(`${apiUrl}/api/tickets`, {
         method: 'POST',
@@ -113,6 +115,8 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
     } catch (err) {
       console.error('Failed to create ticket', err);
       setCreateError('Network error: Could not reach the server.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -158,15 +162,23 @@ export default function Dashboard({ apiUrl }: DashboardProps) {
               <button
                 onClick={() => setIsDialogOpen(false)}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded"
+                disabled={isCreating}
               >
                 Cancel
               </button>
               <button
                 onClick={createTicket}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50"
-                disabled={!newTicketContent}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
+                disabled={!newTicketContent || isCreating}
               >
-                Submit
+                {isCreating ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Submit'
+                )}
               </button>
             </div>
           </div>
