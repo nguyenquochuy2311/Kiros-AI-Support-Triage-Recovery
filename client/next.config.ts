@@ -10,4 +10,8 @@ const nextConfig: NextConfig = {
   /* config options here */
 };
 
+console.log("🏗️ Next.js Startup Config Loaded");
+console.log("  - NODE_ENV:", process.env.NODE_ENV);
+console.log("  - NEXT_PUBLIC_API_URL:", process.env.NEXT_PUBLIC_API_URL);
+
 export default nextConfig;

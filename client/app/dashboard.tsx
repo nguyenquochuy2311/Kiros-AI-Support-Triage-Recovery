@@ -23,6 +23,9 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ apiUrl }: DashboardProps) {
+  useEffect(() => {
+    console.log("🚀 Dashboard Client Initialized. API URL:", apiUrl);
+  }, [apiUrl]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   // Use callback for reliable event handling (no drops)
   useSSE<any>(`${apiUrl}/api/events`, (sseData) => {
