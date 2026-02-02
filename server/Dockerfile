@@ -37,4 +37,4 @@ USER expressjs
 
 EXPOSE 3001
 
-CMD ["npm", "run", "start:server"]
+CMD ["npm", "start"]

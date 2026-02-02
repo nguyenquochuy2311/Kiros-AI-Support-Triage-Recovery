@@ -29,34 +29,6 @@ services:
         sync: false
     autoDeploy: false
 
-  # ------------------------------------
-  # 2. Background Worker (BullMQ)
-  # ------------------------------------
-  - type: worker
-    name: ai-triage-worker
-    env: docker
-    plan: free
-    dockerContext: server
-    dockerfilePath: ./server/Dockerfile
-    dockerCommand: npm run start:worker
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_HOST
-        fromService:
-          type: redis
-          name: ai-triage-redis
-          property: host
-      - key: REDIS_PORT
-        fromService:
-          type: redis
-          name: ai-triage-redis
-          property: port
-      - key: OPENAI_API_KEY
-        sync: false
-    autoDeploy: false
 
   # ------------------------------------
   # 3. Client (Next.js)
