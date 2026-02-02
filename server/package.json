@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
-    "start": "concurrently -k -n \"SERVER,WORKER\" -c \"blue,magenta\" \"npm run start:server\" \"npm run start:worker\"",
+    "start": "npx prisma migrate deploy && concurrently -k -n \"SERVER,WORKER\" -c \"blue,magenta\" \"npm run start:server\" \"npm run start:worker\"",
     "start:server": "node dist/index.js",
     "start:worker": "node dist/worker.js",
     "dev": "concurrently -k -n \"SERVER,WORKER\" -c \"blue,magenta\" \"npm run dev:server\" \"npm run dev:worker\"",
