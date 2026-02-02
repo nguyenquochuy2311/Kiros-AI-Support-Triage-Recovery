@@ -19,7 +19,14 @@ interface Ticket {
   updatedAt?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const getApiUrl = () => {
+  let url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  if (!url.startsWith('http')) {
+    url = `https://${url}`;
+  }
+  return url;
+};
+const API_URL = getApiUrl();
 
 export default function Dashboard() {
   const [tickets, setTickets] = useState<Ticket[]>([]);

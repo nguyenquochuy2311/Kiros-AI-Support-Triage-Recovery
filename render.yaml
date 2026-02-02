@@ -72,7 +72,7 @@ services:
         fromService:
           type: web
           name: ai-triage-server
-          property: url
+          property: host
     autoDeploy: false
 
   # ------------------------------------
