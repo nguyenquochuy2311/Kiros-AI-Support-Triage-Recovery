@@ -40,11 +40,8 @@ services:
     dockerContext: client
     dockerfilePath: ./client/Dockerfile
     envVars:
-      - key: API_URL
-        fromService:
-          type: web
-          name: ai-triage-server
-          property: host
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
     autoDeploy: false
 
   # ------------------------------------
