@@ -5,89 +5,89 @@
 
 ---
 
-## 1. Executive Summary (Tổng quan)
-Hệ thống **AI Support Triage Hub** giải quyết vấn đề "nút thắt cổ chai" trong quy trình chăm sóc khách hàng. Thay vì để nhân viên CSKH phải đọc thủ công từng email, hệ thống sẽ tự động tiếp nhận, phân loại, đánh giá mức độ khẩn cấp và soạn thảo câu trả lời nháp sử dụng Generative AI.
-Điểm mấu chốt của hệ thống là khả năng **xử lý bất đồng bộ (Asynchronous Processing)** để đảm bảo trải nghiệm người dùng cuối nhanh nhất, trong khi AI xử lý tác vụ nặng ở nền.
+## 1. Executive Summary
+The **AI Support Triage Hub** solves the "bottleneck" problem in the customer support process. Instead of having CS agents manually read every email, the system automatically receives, categorizes, assesses urgency, and drafts responses using Generative AI.
+The key to the system is the **Asynchronous Processing** capability to ensure the fastest end-user experience, while AI handles heavy tasks in the background.
 
 ---
 
-## 2. Business Analysis (Góc nhìn Phân tích Nghiệp vụ)
+## 2. Business Analysis
 
-### 2.1. Vấn đề (Pain Points)
-- **User:** Gửi khiếu nại và phải chờ đợi lâu mới nhận được phản hồi, không biết ticket của mình đã được ghi nhận chưa.
-- **Agent:** Bị quá tải bởi hàng trăm ticket rác hoặc ticket đơn giản. Tốn thời gian gõ lại các câu trả lời mẫu (boilerplate). Khó xác định ticket nào cần xử lý gấp (VIP/Angry user).
-- **System:** Việc gọi AI trực tiếp (Synchronous) khi nhận Request sẽ làm treo API từ 5-10s, dẫn đến timeout và trải nghiệm tồi tệ.
+### 2.1. Pain Points
+- **User:** Sends a complaint and has to wait a long time for a response, not knowing if their ticket has been recorded.
+- **Agent:** Overloaded by hundreds of spam or simple tickets. Wastes time typing boilerplate responses. Difficult to identify tickets that need urgent handling (VIP/Angry user).
+- **System:** Calling AI directly (Synchronous) upon receiving a Request hangs the API for 5-10s, leading to timeouts and a poor experience.
 
-### 2.2. Giải pháp (Solution Strategy)
-- **Decoupling (Tách rời):** Tách việc "Tiếp nhận" (Ingestion) và "Xử lý" (Processing) thành 2 luồng riêng biệt.
-- **AI Augmentation:** AI không thay thế con người, mà đóng vai trò "trợ lý sơ cấp" (Triage Nurse) để chuẩn bị sẵn đạn dược cho Agent bắn.
-- **Real-time Feedback:** Cập nhật trạng thái xử lý theo thời gian thực để Agent cảm thấy hệ thống đang "sống".
+### 2.2. Solution Strategy
+- **Decoupling:** Separate "Ingestion" and "Processing" into 2 distinct flows.
+- **AI Augmentation:** AI does not replace humans, but acts as a "primary assistant" (Triage Nurse) to prepare ammunition for the Agent to fire.
+- **Real-time Feedback:** Update processing status in real-time so Agents feel the system is "alive".
 
-### 2.3. Rủi ro & Chiến lược giảm thiểu (Risk Analysis)
-| Rủi ro | Mức độ | Chiến lược giảm thiểu (Engineering Depth) |
+### 2.3. Risk Analysis
+| Risk | Level | Mitigation Strategy (Engineering Depth) |
 | :--- | :--- | :--- |
-| **AI Hallucination** (AI trả lời sai) | Medium | Agent luôn phải review và nhấn "Approve" trước khi gửi. Không gửi tự động. |
-| **Malformed JSON** (AI trả sai định dạng) | High | Sử dụng **Zod** để validate output. Nếu lỗi, Worker sẽ retry hoặc fallback về giá trị mặc định, không làm crash app. |
-| **High Load** (Spam ticket) | High | API trả về ngay lập tức (Non-blocking). Sử dụng Queue (Redis) để đệm (buffer) tải. |
-| **API Failure** (OpenAI sập) | Low | Cơ chế **Exponential Backoff Retry** trong Worker. |
+| **AI Hallucination** (AI gives wrong answer) | Medium | Agent must always review and click "Approve" before sending. No automatic sending. |
+| **Malformed JSON** (AI returns wrong format) | High | Use **Zod** to validate output. If error, Worker will retry or fallback to default value, not crashing the app. |
+| **High Load** (Spam ticket) | High | API returns immediately (Non-blocking). Use Queue (Redis) to buffer load. |
+| **API Failure** (OpenAI down) | Low | **Exponential Backoff Retry** mechanism in Worker. |
 
 ---
 
-## 3. Functional Requirements (Yêu cầu Chức năng)
+## 3. Functional Requirements
 
 ### 3.1. Ticket Ingestion API (The "Bottleneck" Test)
 - **Actor:** End User / External System.
 - **Endpoint:** `POST /api/tickets`
 - **Input:** `{ content: string, userEmail: string }`
 - **Behavior:**
-  1. Validate input (không được rỗng).
-  2. Tạo bản ghi DB với trạng thái `PENDING`.
-  3. Đẩy Job vào Queue (`ticket-processing`).
-  4. **Trả về ngay lập tức** (Response Time < 200ms).
+  1. Validate input (must not be empty).
+  2. Create DB record with `PENDING` status.
+  3. Push Job to Queue (`ticket-processing`).
+  4. **Return immediately** (Response Time < 200ms).
 - **Output:** `201 Created` + `{ id: "uuid", status: "queued" }`.
 
 ### 3.2. AI Worker Engine (Background Process)
 - **Actor:** System (Worker).
-- **Trigger:** Có Job mới trong Queue.
+- **Trigger:** New Job in Queue.
 - **Process:**
-  1. Lấy nội dung ticket.
-  2. Gọi LLM với Prompt kỹ thuật (System Prompt) yêu cầu trả về JSON.
+  1. Get ticket content.
+  2. Call LLM with Technical Prompt (System Prompt) requesting JSON return.
   3. **AI Tasks:**
-     - `Category`: Phân loại (Billing, Tech, Feature, Other).
-     - `Urgency`: Đánh giá (High, Medium, Low) dựa trên từ khóa (e.g., "dữ liệu bị mất", "gấp").
-     - `Sentiment`: Chấm điểm cảm xúc (1-10).
-     - `Draft`: Soạn câu trả lời lịch sự, empathic.
-  4. Validate JSON output bằng Zod.
-  5. Cập nhật DB -> Trạng thái `PROCESSED`.
-  6. Bắn sự kiện `ticket-updates` vào Redis Pub/Sub.
+     - `Category`: Needs classification (Billing, Tech, Feature, Other).
+     - `Urgency`: Assess (High, Medium, Low) based on keywords (e.g., "data loss", "urgent").
+     - `Sentiment`: Score sentiment (1-10).
+     - `Draft`: Draft a polite, empathic response.
+  4. Validate JSON output using Zod.
+  5. Update DB -> `PROCESSED` status.
+  6. Fire `ticket-updates` event to Redis Pub/Sub.
 
 ### 3.3. Agent Dashboard (Real-time UI)
 - **Actor:** Support Agent.
 - **Views:**
-  - **List View:** Hiển thị danh sách ticket.
-    - Sắp xếp: Ưu tiên `High Urgency` lên đầu.
-    - Visual: Badge màu đỏ cho High, xanh cho Low.
-    - Real-time: Tự động cập nhật khi Worker xử lý xong (qua SSE).
+  - **List View:** Display ticket list.
+    - Sort: Prioritize `High Urgency` at top.
+    - Visual: Red badge for High, green for Low.
+    - Real-time: Auto-update when Worker finishes processing (via SSE).
   - **Detail View:**
-    - Xem nội dung gốc.
-    - Xem AI Analysis (Category, Sentiment).
-    - Editor: Chỉnh sửa `Draft Response`.
-    - Action: Button "Resolve & Send" (Lưu `finalReply`, đổi status `RESOLVED`).
+    - View original content.
+    - View AI Analysis (Category, Sentiment).
+    - Editor: Edit `Draft Response`.
+    - Action: Button "Resolve & Send" (Save `finalReply`, change status to `RESOLVED`).
 
 ---
 
-## 4. Non-Functional Requirements (Yêu cầu Phi chức năng)
-*Đây là phần ghi điểm "Engineering Depth"*
+## 4. Non-Functional Requirements
+*This is the "Engineering Depth" scoring section*
 
-1.  **Performance:** API Ingestion phải chịu tải cao, không bao giờ được chờ AI.
-2.  **Resilience (Khả năng phục hồi):**
-    - Nếu Worker chết, Job trong Redis không được mất. Khi Worker sống lại phải xử lý tiếp.
-    - Frontend mất mạng phải tự kết nối lại (Auto-reconnect).
-3.  **Extensibility (Khả năng mở rộng):**
-    - Code phải dùng **Adapter Pattern** cho Queue để dễ dàng đổi từ BullMQ sang RabbitMQ/Kafka.
+1.  **Performance:** Ingestion API must withstand high load, never waiting for AI.
+2.  **Resilience:**
+    - If Worker dies, Jobs in Redis must not be lost. When Worker revives, it must continue processing.
+    - If Frontend loses connection, it must auto-reconnect.
+3.  **Extensibility:**
+    - Code must use **Adapter Pattern** for Queue to easily switch from BullMQ to RabbitMQ/Kafka.
 4.  **Maintainability:**
-    - Type Safety tuyệt đối (Full TypeScript).
-    - Environment Variables quản lý chặt chẽ.
+    - Absolute Type Safety (Full TypeScript).
+    - Strictly managed Environment Variables.
 
 ---
 
@@ -97,14 +97,14 @@ Hệ thống **AI Support Triage Hub** giải quyết vấn đề "nút thắt c
 | Field | Type | Description | AI Generated? |
 | :--- | :--- | :--- | :--- |
 | `id` | UUID | Primary Key | No |
-| `content` | String | Nội dung khiếu nại | No |
+| `content` | String | Complaint content | No |
 | `status` | Enum | `PENDING`, `PROCESSED`, `RESOLVED`, `FAILED` | No (Updated by System) |
-| `createdAt` | DateTime | Thời gian tạo | No |
+| `createdAt` | DateTime | Creation time | No |
 | `category` | String | Billing, Technical, etc. | **Yes** |
 | `urgency` | Enum | `High`, `Medium`, `Low` | **Yes** |
 | `sentiment` | Int | 1 (Angry) - 10 (Happy) | **Yes** |
-| `draftReply` | Text | AI gợi ý trả lời | **Yes** |
-| `finalReply` | Text | Agent chốt câu trả lời | No |
+| `draftReply` | Text | AI suggested reply | **Yes** |
+| `finalReply` | Text | Agent final reply | No |
 
 ---
 
@@ -139,3 +139,4 @@ sequenceDiagram
     end
     
     Dashboard->>Dashboard: Auto-refresh Row (Green/Red Badge)
+```

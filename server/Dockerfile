@@ -35,6 +35,8 @@ COPY --from=builder --chown=expressjs:expressjs /app/node_modules ./node_modules
 COPY --from=builder --chown=expressjs:expressjs /app/package.json ./package.json
 COPY --from=builder --chown=expressjs:expressjs /app/prisma ./prisma
 
+RUN chmod -R 777 node_modules
+
 USER expressjs
 
 EXPOSE 3001
