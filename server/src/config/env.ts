@@ -4,8 +4,10 @@ import path from "path";
 
 import dotenvExpand from "dotenv-expand";
 
-const myEnv = dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
-dotenvExpand.expand(myEnv);
+if (process.env.NODE_ENV !== 'production') {
+  const myEnv = dotenv.config({ path: path.resolve(process.cwd(), '../.env') });
+  dotenvExpand.expand(myEnv);
+}
 
 const envSchema = z.object({
   // Database
