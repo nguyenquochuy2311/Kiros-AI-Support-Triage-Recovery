@@ -30,10 +30,10 @@ RUN apk add --no-cache openssl
 RUN addgroup --system --gid 1001 expressjs
 RUN adduser --system --uid 1001 expressjs
 
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder --chown=expressjs:expressjs /app/dist ./dist
+COPY --from=builder --chown=expressjs:expressjs /app/node_modules ./node_modules
+COPY --from=builder --chown=expressjs:expressjs /app/package.json ./package.json
+COPY --from=builder --chown=expressjs:expressjs /app/prisma ./prisma
 
 USER expressjs
 
