@@ -35,4 +35,9 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+console.log("🔍 Environment Loaded:", {
+  NODE_ENV: process.env.NODE_ENV,
+  DATABASE_URL_masked: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 25) + "..." : "UNDEFINED"
+});
+
 export const env = parsed.data;
